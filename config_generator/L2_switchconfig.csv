@@ -1,0 +1,6 @@
+﻿0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+switchname,gateway,switch_ip,guest1vlan,hibandguestvlan,studentvlan,labsvlan,employeevlan,netadminvlan,wapvendvlan,phonesvlan,doodadsvlan,,,,,
+CSBW,10.147.104.254,10.147.104.155,,,,,,,,,,,,,,
+VPL,10.10.10.254,10.10.10.151,,,,,,,,,,,,,,
+HOU,10.145.64.254,10.145.64.101,1000,1032,1100,1132,1200,1232,1300,1400,1500,,,,,
+PC09,10.145.108.254,10.145.108.109,,,,,,,,,,,,,,

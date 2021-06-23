@@ -1,0 +1,205 @@
+conf t
+!!!!!!!!!!!!!!!!!!!!!!!!!!! insert name of switch on next line !!!!!!!
+hostname $hostname$
+allow-unsupported-transceiver
+y
+encrypt-credentials
+y
+aruba-central disable
+no rest-interface
+
+
+password manager user-name admin 
+
+  password non-plaintext-sha256
+
+
+!!!!!!!!!!!!!!! Put physical trunk interfaces into next line
+trunk 9-10 trk1 lacp
+!!!!!!!!!!!!!
+
+dhcp-snooping authorized-server 10.48.88.2
+dhcp-snooping authorized-server 10.48.88.3
+dhcp-snooping trust trk1
+dhcp-snooping vlan 10-11 20-21 30-31 40 50 60
+
+banner motd * 
+  ------------------ Warning! Warning! Warning! ----------------------- This system is restricted to Davidson College authorized users for business purposes.  Unauthorized access is a violation of the law. This service may be monitored for administrative and security reasons. By proceeding, you consent to this monitoring. ------------------ Warning! Warning! Warning! -----------------------*
+logging 10.48.74.9
+logging severity warning
+include-credentials
+y
+y
+radius-server host 10.48.88.3 key ohple4se
+
+radius-server retransmit 2
+
+crypto pki identity-profile switch-id-profile subject common-name switch country us state NC locality Davidson org Davidson-College org-unit T&I
+crypto pki enroll-self-signed certificate-name aruba-subswitch
+crypto key generate ssh
+
+timesync ntp
+ntp enable
+ntp unicast
+ntp server 10.63.255.1
+no telnet-server
+web-management ssl
+no web-management plaintext
+web-management idle-timeout 300
+time daylight-time-rule continental-us-and-canada
+time timezone -300
+
+!!!!!!!!!!! Insert default gateway address!!!!!!!!!!!!!!
+ip default-gateway $gateway$
+
+ip dns domain-name "davidson.edu"
+
+!ip access-list extended "Switch_Management"
+!     10 permit ip 10.48.74.0 0.0.0.255 10.147.104.150 0.0.0.0
+!     11 permit ip 10.147.104.0 0.0.0.255 10.147.104.150 0.0.0.0
+!     20 permit tcp 10.54.9.240 0.0.0.15 10.147.104.150 0.0.0.0
+!     30 permit tcp 10.53.17.128 0.0.0.0 10.147.104.150 0.0.0.0 eq 22
+!     31 permit tcp 10.53.17.128 0.0.0.0 10.147.104.150 0.0.0.0 eq 443
+!     99 deny ip 0.0.0.0 255.255.255.255 10.147.104.150 0.0.0.0
+!   exit
+
+ip authorized-managers 10.147.104.0 255.255.255.0 access manager access-method all
+ip authorized-managers 10.54.9.240 255.255.255.240 access manager access-method all
+ip authorized-managers 10.48.74.0 255.255.255.0 access manager access-method all
+
+
+
+qos type-of-service diff-services
+!!! Insert all access port ranges below!!!!!!
+interface 1-8
+  qos trust dot1p
+
+!!! Insert all uplink port names below  
+interface 9-10
+   name "TRK1_to_PC06"
+   exit
+
+interface trk1
+ qos trust dot1p
+ dhcp-snooping trust
+ 
+ exit
+   
+snmp-server community "rU6!y7duZew6" operator unrestricted
+snmp-server community "H@nceAb0ve" operator
+no snmp-server community "public"
+aaa authentication login privilege-mode
+aaa authentication console login radius local
+aaa authentication console enable radius local
+aaa authentication ssh login radius local
+aaa authentication ssh enable radius local
+aaa authentication web login radius local
+aaa authentication web enable radius local
+aaa authentication num-attempts 5
+aaa authentication lockout-delay 60
+
+
+!oobm
+!   ip address 192.168.1.10 255.255.255.0
+!   exit
+      
+!!!Vlans, insert untagged interfaces for access ports below
+
+vlan 10
+   name "Guest1"
+   tagged Trk1
+   no ip address
+vlan 11
+   name "Hibandguest"
+   tagged Trk1
+   no ip address
+vlan 20
+   name "Student1"
+   tagged Trk1
+   no ip address
+vlan 21
+   name "Labs"
+   tagged Trk1
+   no ip address
+vlan 30
+   name "Employee"
+   tagged Trk1
+   no ip address
+!   untagged 1/6-1/20
+vlan 31
+   name "Netadmin"
+   tagged Trk1
+!!!!!!!!!!!!!!insert switch management IP Address!!!!!!!!!!
+  ip address $switch_ip$/24
+! ip access-group "Switch_Management" in
+   untagged 6
+vlan 40
+   name "Wapvend"
+   untagged 1-4
+   tagged Trk1
+   no ip address
+!!! Insert tagged  ports for any port used by a cisco phone below
+vlan 50
+   name "Phones"
+   tagged Trk1
+   no ip address
+   untagged 5
+   voice
+vlan 60
+   name "Doodads"
+   tagged Trk1
+   no ip address
+   untagged 7-8
+vlan 1
+   name "DEFAULT_VLAN"
+   tagged Trk1
+   no ip address
+   no ipv6 enable
+   exit
+
+spanning-tree   
+!!!insert access interfaces in the following two lines
+spanning-tree 1-8 admin-edge-port
+spanning-tree 1-8 bpdu-filter
+spanning-tree Trk1 priority 4
+
+no tftp server
+no autorun
+no dhcp config-file-update
+no dhcp image-file-update
+no dhcp tr69-acs-url
+ip source-interface tacacs vlan 31
+ip source-interface radius vlan 31
+ip source-interface telnet vlan 31
+ip source-interface tftp vlan 31
+ip ssh
+
+end
+wri mem
+ping 10.147.104.254
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Software upgrade
+copy tftp flash 10.147.104.1 WC_16_08_0002.swi primary
+y
+wri mem
+reload
+y
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! AFTER you upgrade, do this to change config back to deploy state
+
+sh flash
+conf t
+vlan 40
+  untagged 6
+vlan 31
+  ip address 10.145.108.109/24
+  no ip address 10.147.104.200 255.255.255.0
+  exit
+ip default-gateway 10.145.108.254
+end
+wri mem
+
+

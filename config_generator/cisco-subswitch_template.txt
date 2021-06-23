@@ -1,0 +1,414 @@
+service nagle
+no service pad
+service timestamps debug datetime localtime show-timezone year
+service timestamps log datetime localtime show-timezone year
+service password-encryption
+!
+hostname $hostname$
+!
+boot-start-marker
+boot-end-marker
+!
+enable secret cisco123
+!
+username admin privilege 15 password cisco123
+aaa new-model
+!
+!
+aaa group server radius MSRADIUS
+ server name DEWEY
+!
+aaa authentication login default group MSRADIUS local
+aaa authentication enable default group MSRADIUS enable
+aaa authorization exec default group MSRADIUS if-authenticated 
+aaa accounting exec default start-stop group MSRADIUS
+aaa accounting network default start-stop group MSRADIUS
+aaa accounting connection default start-stop group MSRADIUS
+aaa accounting system default start-stop group MSRADIUS
+!
+!
+!
+!
+!
+!
+aaa session-id common
+clock timezone EST -5 0
+clock summer-time EDT recurring
+system mtu routing 1500
+!
+!
+!
+!
+no ip source-route
+ip routing
+!
+!
+no ip domain-lookup
+ip domain-name davidson.edu
+ip name-server 10.48.88.1
+ip name-server 10.48.88.2
+ip multicast-routing distributed
+vtp domain DAVIDSON
+vtp mode transparent
+!
+!
+!
+!
+!
+authentication mac-move permit
+!
+mls qos map policed-dscp  0 10 18 24 46 to 8
+mls qos map cos-dscp 0 8 16 24 32 46 48 56
+mls qos srr-queue output cos-map queue 1 threshold 3 4 5
+mls qos srr-queue output cos-map queue 2 threshold 1 2
+mls qos srr-queue output cos-map queue 2 threshold 2 3
+mls qos srr-queue output cos-map queue 2 threshold 3 6 7
+mls qos srr-queue output cos-map queue 3 threshold 3 0
+mls qos srr-queue output cos-map queue 4 threshold 3 1
+mls qos srr-queue output dscp-map queue 1 threshold 3 32 33 40 41 42 43 44 45
+mls qos srr-queue output dscp-map queue 1 threshold 3 46 47
+mls qos srr-queue output dscp-map queue 2 threshold 1 16 17 18 19 20 21 22 23
+mls qos srr-queue output dscp-map queue 2 threshold 1 26 27 28 29 30 31 34 35
+mls qos srr-queue output dscp-map queue 2 threshold 1 36 37 38 39
+mls qos srr-queue output dscp-map queue 2 threshold 2 24
+mls qos srr-queue output dscp-map queue 2 threshold 3 48 49 50 51 52 53 54 55
+mls qos srr-queue output dscp-map queue 2 threshold 3 56 57 58 59 60 61 62 63
+mls qos srr-queue output dscp-map queue 3 threshold 3 0 1 2 3 4 5 6 7
+mls qos srr-queue output dscp-map queue 4 threshold 1 8 9 11 13 15
+mls qos srr-queue output dscp-map queue 4 threshold 2 10 12 14
+mls qos queue-set output 1 threshold 1 100 100 50 200
+mls qos queue-set output 1 threshold 2 125 125 100 400
+mls qos queue-set output 1 threshold 3 100 100 100 400
+mls qos queue-set output 1 threshold 4 60 150 50 200
+mls qos queue-set output 1 buffers 15 25 40 20
+mls qos
+!
+!
+!
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+auto qos srnd4
+errdisable recovery cause udld
+errdisable recovery cause bpduguard
+errdisable recovery cause security-violation
+errdisable recovery cause channel-misconfig
+errdisable recovery cause pagp-flap
+errdisable recovery cause dtp-flap
+errdisable recovery cause link-flap
+errdisable recovery cause sfp-config-mismatch
+errdisable recovery cause gbic-invalid
+errdisable recovery cause l2ptguard
+errdisable recovery cause psecure-violation
+errdisable recovery cause port-mode-failure
+errdisable recovery cause dhcp-rate-limit
+errdisable recovery cause pppoe-ia-rate-limit
+errdisable recovery cause mac-limit
+errdisable recovery cause vmps
+errdisable recovery cause storm-control
+errdisable recovery cause inline-power
+errdisable recovery cause arp-inspection
+errdisable recovery cause loopback
+errdisable recovery cause small-frame
+!
+!
+!
+!
+vlan internal allocation policy ascending
+!
+vlan 10
+ name Guest1
+!
+vlan 11
+ name HighbandGuest
+!
+vlan 20
+ name Student
+!
+vlan 21
+ name Labs
+!
+vlan 30
+ name Employee
+!
+vlan 31
+ name Netadmin
+!
+vlan 40
+ name Wapvend
+!
+vlan 50
+ name Phones
+!
+vlan 60
+ name Doodads
+!
+ip telnet source-interface Vlan31
+!
+lldp run
+!
+class-map match-all AUTOQOS_VOIP_DATA_CLASS
+ match ip dscp ef 
+class-map match-all AUTOQOS_DEFAULT_CLASS
+ match access-group name AUTOQOS-ACL-DEFAULT
+class-map match-all AUTOQOS_VOIP_SIGNAL_CLASS
+ match ip dscp cs3 
+!
+policy-map AUTOQOS-SRND4-CISCOPHONE-POLICY
+ class AUTOQOS_VOIP_DATA_CLASS
+  set dscp ef
+  police 128000 8000 exceed-action policed-dscp-transmit
+ class AUTOQOS_VOIP_SIGNAL_CLASS
+  set dscp cs3
+  police 32000 8000 exceed-action policed-dscp-transmit
+ class AUTOQOS_DEFAULT_CLASS
+  set dscp default
+  police 10000000 8000 exceed-action policed-dscp-transmit
+!
+!
+! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/1
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/2
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/3
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/4
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/5
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/6
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/7
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/8
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/9
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ srr-queue bandwidth share 1 30 35 5
+ priority-queue out 
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface GigabitEthernet0/10
+ description HighBandGuest
+ switchport access vlan 11
+ switchport mode access
+ switchport voice vlan 50
+ mls qos trust device cisco-phone
+ mls qos trust cos
+ auto qos voip cisco-phone 
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ service-policy input AUTOQOS-SRND4-CISCOPHONE-POLICY
+!
+interface $trunk1$
+ description To_xxx-SWITCH
+ switchport trunk allowed vlan 1,10,11,20,21,30,31,40,50,60
+ switchport mode trunk
+ mls qos trust dscp
+ auto qos trust dscp
+!
+interface $trunk2$
+ description To_xxx-SWITCH
+ switchport trunk allowed vlan 1,10,11,20,21,30,31,40,50,60
+ switchport mode trunk
+ mls qos trust dscp
+ auto qos trust dscp
+!
+interface Vlan1
+ no ip address
+ shutdown
+!
+interface Vlan31
+ description Netadmin
+ ip address $switch_ip$ 255.255.255.0
+!
+ip default-gateway $gateway$
+ip forward-protocol nd
+no ip http server
+no ip http secure-server
+!
+ip ftp source-interface Vlan31
+ip tftp source-interface Vlan31
+ip route 0.0.0.0 0.0.0.0 $gateway$
+!
+ip ssh version 2
+no vstack
+!
+ip access-list standard SNMP_MANAGE
+ permit 10.41.68.0 0.0.0.255
+ permit 10.147.104.0 0.0.0.255
+ permit 10.48.74.0 0.0.0.255
+ip access-list standard management
+ permit 10.41.68.0 0.0.0.255
+ permit 10.147.104.0 0.0.0.255
+ permit 10.48.88.0 0.0.7.255
+ permit 10.48.72.0 0.0.3.255
+ permit 10.54.9.240 0.0.0.15
+ permit 10.53.17.128 0.0.0.1
+!
+ip access-list extended AUTOQOS-ACL-DEFAULT
+ permit ip any any
+!
+ip sla enable reaction-alerts
+!
+snmp-server community H@nceAb0ve RO SNMP_MANAGE
+snmp-server community rU6!y7duZew6 RW SNMP_MANAGE
+snmp-server trap-source Vlan31
+snmp-server enable traps snmp authentication linkdown linkup coldstart warmstart
+snmp-server enable traps tty
+snmp-server enable traps license
+snmp-server enable traps cluster
+snmp-server enable traps config-copy
+snmp-server enable traps config
+snmp-server enable traps fru-ctrl
+snmp-server enable traps entity
+snmp-server enable traps hsrp
+snmp-server enable traps cpu threshold
+snmp-server enable traps ipsla
+snmp-server enable traps bridge newroot topologychange
+snmp-server enable traps stpx inconsistency root-inconsistency loop-inconsistency
+snmp-server enable traps syslog
+snmp-server enable traps vtp
+snmp-server enable traps vlancreate
+snmp-server enable traps vlandelete
+snmp-server enable traps flash insertion removal
+snmp-server enable traps port-security
+snmp-server enable traps envmon fan shutdown supply temperature status
+snmp-server enable traps mac-notification change move threshold
+snmp-server enable traps vlan-membership
+!
+!
+radius server DEWEY
+ address ipv4 10.48.88.3 auth-port 1812 acct-port 1813
+ key 7 12160D071E0E58172F
+!
+banner motd Q
+ ****************** Warning! Warning! Warning! ************************ 
+ This system is restricted to Davidson College authorized users for 
+ business  purposes.  Unauthorized access is a violation of the law.
+ This service may be monitored for administrative and security reasons.
+ By proceeding, you consent to this monitoring.
+ ****************** Warning! Warning! Warning! ************************
+ Q
+!
+line con 0
+ session-timeout 60 
+ exec-timeout 30 0
+ logging synchronous
+ history size 100
+line vty 0 4
+ session-timeout 60 
+ access-class management in
+ exec-timeout 30 0
+ logging synchronous
+ length 0
+ history size 100
+ transport preferred telnet
+line vty 5 15
+ session-timeout 60 
+ access-class management in
+ exec-timeout 30 0
+ logging synchronous
+ history size 100
+ transport preferred telnet
+!
+ntp server 10.48.24.9
+!
+end
